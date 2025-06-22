@@ -1,8 +1,6 @@
 {
-  "build_command": "pip install -r requirements.txt",
-  "start_command": "uvicorn main:app --host 0.0.0.0 --port $PORT",
-  "python": {
-    "version": "3.9"
-  }
-} 
+    "build_command": "export CONDA_DIR=/opt/conda && export ENV_DIR=/venv && apt-get update && apt-get install -y --no-install-recommends git wget unzip bzip2 sudo build-essential ca-certificates libc6-dev && apt-get clean && rm -rf /var/lib/apt/lists/* && wget -q https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh && export PATH=$CONDA_DIR/bin:$PATH && echo 'export PATH=$CONDA_DIR/bin:$PATH' > /etc/profile.d/conda.sh && bash /tmp/miniforge.sh -b -p $CONDA_DIR && rm -rf /tmp/* && $CONDA_DIR/bin/conda env create -f environment.yml && $CONDA_DIR/bin/conda clean -tipy",
+    "start_command": "/opt/conda/envs/cloudcollector/bin/uvicorn main:app --host 0.0.0.0 --port 8000",
+    "python_version": "3.9"
+  } 
   
