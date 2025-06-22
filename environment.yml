@@ -3,24 +3,20 @@ name: cloud-collector  # 环境名称
 channels:  # 包的来源渠道
   - conda-forge  # 社区维护的包，通常更新更快
   - defaults     # Anaconda 官方包
+
 dependencies:  # 依赖列表
   - python=3.9  # 指定 Python 版本
   - pip  # 包管理器
   - pip:
-    - fastapi==0.104.1
-    - uvicorn[standard]==0.24.0
+    - fastapi==0.109.2
+    - uvicorn==0.27.1
     - httpx==0.25.2
-    - supabase==2.0.2
-    # AI模型集成
-    - volcengine-python-sdk[ark]==1.0.82
-    
-    # 环境变量管理
+    - supabase==2.15.2
+    - 'volcengine-python-sdk[ark]'
     - python-dotenv==1.0.0
-    
-    # 工具库
+    - openai==1.14.0
+
     - python-multipart==0.0.6
     - pydantic==2.5.0
     - typing-extensions==4.8.0
-    
-    # 图像处理
     - Pillow==10.1.0 
