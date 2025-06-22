@@ -1668,35 +1668,91 @@ async def generate_cloud_description_from_image(tool: str, image_base64: str, co
 async def generate_cloud_name_from_image_upload(
     file: UploadFile = File(..., description="云朵图片文件"),
     tool: str = Form(..., description="捕云工具类型：broom, hand, catPaw, glassCover"),
-    time: str = Form(..., description="拍摄时间"),
-    location: str = Form(..., description="拍摄地点"),
-    weather: Optional[str] = Form(None, description="天气情况")
+    time: Optional[str] = Form(None, description="拍摄时间（可选）"),
+    location: Optional[str] = Form(None, description="拍摄地点（可选）"),
+    weather: Optional[str] = Form(None, description="天气情况（可选）")
 ):
     """从上传的图片文件生成云朵名称（文件上传版本）"""
+    print(f"=== 开始处理图片上传命名请求 ===")
+    print(f"文件名: {file.filename}")
+    print(f"文件类型: {file.content_type}")
+    print(f"文件大小: {file.size if hasattr(file, 'size') else '未知'}")
+    print(f"工具: {tool}")
+    print(f"时间: {time}")
+    print(f"地点: {location}")
+    print(f"天气: {weather}")
+    
     try:
+        # 验证必需参数
+        if not file:
+            raise HTTPException(status_code=400, detail="缺少图片文件")
+        if not tool:
+            raise HTTPException(status_code=400, detail="缺少工具参数")
+        
+        # 验证工具类型
+        valid_tools = ["broom", "hand", "catPaw", "glassCover"]
+        if tool not in valid_tools:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"无效的工具类型: {tool}，支持的类型: {valid_tools}"
+            )
+        
+        # 验证文件类型
+        if file.content_type and not file.content_type.startswith('image/'):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"不支持的文件类型: {file.content_type}，请上传图片文件"
+            )
+        
+        print("开始读取文件内容...")
         # 读取文件内容
         file_content = await file.read()
+        print(f"文件大小: {len(file_content)} bytes")
+        
+        if len(file_content) == 0:
+            raise HTTPException(status_code=400, detail="上传的文件为空")
+        
+        if len(file_content) > 10 * 1024 * 1024:  # 10MB 限制
+            raise HTTPException(status_code=400, detail="文件过大，请上传小于10MB的图片")
+        
+        print("转换为base64...")
         # 转换为base64
         image_base64 = base64.b64encode(file_content).decode('utf-8')
+        print(f"Base64长度: {len(image_base64)}")
         
-        # 构建context
+        print("构建上下文...")
+        # 构建context，使用默认值处理可选参数
         context = CloudContext(
-            time=time,
+            time=time or "未知时间",
             weather=weather,
-            location=location
+            location=location or "未知地点"
         )
+        print(f"构建的上下文: {context}")
         
+        print("调用云朵命名函数...")
         # 调用现有的函数
         response = await generate_cloud_name_from_image(tool, image_base64, context)
+        print(f"云朵命名完成: {response}")
+        
         return CloudNameResponse(
             name=response["name"],
             description=response["description"],
             style=response["style"]
         )
+    except HTTPException:
+        # 重新抛出 HTTP 异常
+        raise
     except Exception as e:
+        print(f"=== 文件上传处理异常 ===")
+        print(f"异常信息: {str(e)}")
+        print(f"异常类型: {type(e)}")
+        import traceback
+        print(f"完整错误信息: {traceback.format_exc()}")
+        print(f"=== 文件上传异常结束 ===")
+        
         raise HTTPException(
             status_code=500,
-            detail="这朵云正在躲猫猫，AI一时没追上它的脑洞！"
+            detail=f"这朵云正在躲猫猫，AI一时没追上它的脑洞！错误详情: {str(e)}"
         )
 
 @app.post("/api/cloud/description-from-image-upload", response_model=CloudDescriptionResponse)
