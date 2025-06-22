@@ -1,0 +1,33 @@
+name: cloud-collector  # 环境名称
+
+channels:  # 包的来源渠道
+  - conda-forge  # 社区维护的包，通常更新更快
+  - defaults     # Anaconda 官方包
+
+dependencies:  # 依赖列表
+  - python=3.9  # 指定 Python 版本
+  - pip>=21.0  # 确保pip版本足够新
+  - setuptools  # 添加setuptools以避免构建问题
+  - wheel       # 添加wheel以加速安装
+  
+  - pip:
+    # 核心Web框架 - 按依赖顺序安装
+    - pydantic==2.5.0
+    - typing-extensions==4.8.0
+    - fastapi==0.104.1
+    
+    # 服务器 - 不使用[standard]避免复杂依赖
+    - uvicorn==0.24.0
+    - httpx==0.28.1
+    # 工具库
+    - python-dotenv==1.0.0
+    - python-multipart==0.0.6
+    
+    # 图像处理 - 放在后面，因为可能需要编译
+    - Pillow==10.1.0
+    
+    # 数据库 - 可能有复杂依赖，单独安装
+    - supabase==2.0.2
+    
+    # AI SDK - 最后安装，最可能出问题的包
+    - volcengine-python-sdk==3.0.9
