@@ -505,7 +505,7 @@ async def generate_cloud_name_with_ark(tool: str, features: ImageFeatures, conte
             "max_tokens": 200
         }
 
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=300.0) as client:
             response = await client.post(CUSTOM_API_BASE, headers=headers, json=payload)
             
             if response.status_code == 200:
@@ -608,7 +608,7 @@ async def generate_cloud_description_with_ark(cloud_name: str, features: ImageFe
         }
 
         # 调用自定义 OpenAI 风格 API
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=300.0) as client:
             response = await client.post(CUSTOM_API_BASE, headers=headers, json=payload)
             
             if response.status_code == 200:
@@ -681,7 +681,7 @@ async def get_city_code_from_location(latitude: float, longitude: float) -> str:
         return "110101"  # 北京市作为默认城市编码
     
     try:
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=300.0) as client:
             # 使用高德逆地理编码API获取城市信息
             response = await client.get(
                 "https://restapi.amap.com/v3/geocode/regeo",
@@ -717,7 +717,7 @@ async def get_real_weather_data(latitude: float, longitude: float, units: str = 
         # 获取城市编码
         city_code = await get_city_code_from_location(latitude, longitude)
         
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=300.0) as client:
             response = await client.get(
                 "https://restapi.amap.com/v3/weather/weatherInfo",
                 params={
@@ -762,7 +762,7 @@ async def get_location_info(latitude: float, longitude: float) -> Dict[str, Any]
         }
     
     try:
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=300.0) as client:
             response = await client.get(
                 "https://restapi.amap.com/v3/geocode/regeo",
                 params={
@@ -1243,7 +1243,7 @@ async def analyze_cloud_with_deepseek(image_base64: str, options: CloudAnalysisO
         }
         
         # 发送POST请求
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=300.0) as client:
             response = await client.post(CUSTOM_API_BASE, headers=headers, json=payload)
             
             if response.status_code == 200:
@@ -1383,7 +1383,7 @@ async def generate_cloud_name_from_image(tool: str, image_base64: str, context: 
             "max_tokens": 200
         }
 
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=300.0) as client:
             response = await client.post(CUSTOM_API_BASE, headers=headers, json=payload)
             
             if response.status_code == 200:
@@ -1576,7 +1576,7 @@ async def generate_cloud_description_from_image(tool: str, image_base64: str, co
         }
 
         print(f"开始调用API...")
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=300.0) as client:
             print(f"发送POST请求到: {CUSTOM_API_BASE}")
             response = await client.post(CUSTOM_API_BASE, headers=headers, json=payload)
             
