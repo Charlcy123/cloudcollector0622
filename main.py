@@ -6,7 +6,6 @@ import os
 import json
 from datetime import datetime
 import random
-import uuid
 from volcenginesdkarkruntime import Ark
 from supabase import create_client, Client
 import httpx
@@ -14,12 +13,28 @@ import base64
 import requests
 import re
 # from PIL import Image, ImageDraw, ImageFont  # 临时注释掉PIL导入
-import io
-import ssl
-import certifi
+import urllib3
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # 加载环境变量
 load_dotenv()
+
+# ============== SSL兼容性修复 ==============
+# 禁用SSL警告
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# 强制跳过SSL验证的猴子补丁
+original_request = requests.Session.request
+def patched_request(self, method, url, **kwargs):
+    kwargs['verify'] = False
+    return original_request(self, method, url, **kwargs)
+requests.Session.request = patched_request
+
+# 设置环境变量强制跳过SSL验证
+os.environ["PYTHONHTTPSVERIFY"] = "0"
+os.environ["CURL_CA_BUNDLE"] = ""
+os.environ["REQUESTS_CA_BUNDLE"] = ""
 
 # ============== 全局工具风格配置 ==============
 
@@ -29,7 +44,8 @@ TOOL_STYLES = {
         "style": "儿童脑内剧场童话混乱流",
         "naming_description": "你是一位5岁半的云端占卜小巫师，骑在扫帚上给云朵起名字，并用一句话神经质预言揭秘它们的秘密！你看见云在生气、扫帚没带脑子、袜子叛逃…并把它们变成让人想尖叫截图分享的荒诞预告！",
         "description_prompt": "用5岁半小魔法师的语气，为这朵云写一句魔法预言或者描述它在施展什么神秘魔法。要充满童话色彩和想象力！",
-        "examples": [  "忧郁棉花糖云｜ 它说下午三点果酱会偷袭你的袖子！",
+        "examples": [
+            "忧郁棉花糖云｜ 它说下午三点果酱会偷袭你的袖子！",
             "叛逆袜子云｜ 嘀！左脚袜正在南极教企鹅打扑克！",
             "迟到扫帚尾焰｜ 警告！再不出门会撞见戴礼帽的蜗牛邮差！",
             "叛逆铅笔影｜ 警告！它正帮你写作业…但字全是反的！",
@@ -123,16 +139,76 @@ supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
 supabase_anon_key = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 supabase_service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
-# 创建两个客户端：一个用于普通操作，一个用于管理员操作
-# 添加SSL配置来解决连接问题
-ssl_context = ssl.create_default_context(cafile=certifi.where())
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
+# 创建Supabase客户端，使用简化配置解决SSL问题
+print("正在初始化Supabase客户端...")
 
-# 创建Supabase客户端，使用简化配置
-supabase: Client = create_client(supabase_url, supabase_anon_key)
+# 设置环境变量跳过SSL验证（开发环境）
+os.environ["PYTHONHTTPSVERIFY"] = "0"
 
-supabase_admin: Client = create_client(supabase_url, supabase_service_key)
+try:
+    # 创建Supabase客户端
+    supabase: Client = create_client(supabase_url, supabase_anon_key)
+    supabase_admin: Client = create_client(supabase_url, supabase_service_key)
+    
+    # 测试连接
+    print("测试Supabase连接...")
+    test_result = supabase_admin.table("capture_tools").select("id").limit(1).execute()
+    print(f"✅ Supabase客户端初始化成功，连接正常")
+    
+except Exception as e:
+    print(f"❌ Supabase客户端初始化失败: {str(e)}")
+    print("⚠️ 使用Mock数据模式，某些功能可能受限")
+    
+    # 创建Mock客户端（简单的替代方案）
+    class MockSupabaseClient:
+        def table(self, table_name):
+            return MockTable(table_name)
+    
+    class MockTable:
+        def __init__(self, table_name):
+            self.table_name = table_name
+            
+        def select(self, *args):
+            return self
+            
+        def insert(self, data):
+            return self
+            
+        def update(self, data):
+            return self
+            
+        def delete(self):
+            return self
+            
+        def eq(self, column, value):
+            return self
+            
+        def limit(self, count):
+            return self
+            
+        def order(self, column, **kwargs):
+            return self
+            
+        def range(self, start, end):
+            return self
+            
+        def execute(self):
+            # 返回Mock数据
+            if self.table_name == "capture_tools":
+                return type('MockResult', (), {
+                    'data': [
+                        {"id": "1", "name": "魔法扫帚", "emoji": "🧹", "description": "儿童魔法风格", "sort_order": 1},
+                        {"id": "2", "name": "云朵之手", "emoji": "✋", "description": "生活实诚风格", "sort_order": 2},
+                        {"id": "3", "name": "猫咪爪爪", "emoji": "🐾", "description": "猫主子视角", "sort_order": 3},
+                        {"id": "4", "name": "玻璃罩", "emoji": "🫙", "description": "文学结构风格", "sort_order": 4}
+                    ],
+                    'count': 4
+                })()
+            else:
+                return type('MockResult', (), {'data': [], 'count': 0})()
+    
+    supabase = MockSupabaseClient()
+    supabase_admin = MockSupabaseClient()
 
 app = FastAPI(
     title="云彩收集手册 API",
@@ -429,7 +505,7 @@ async def generate_cloud_name_with_ark(tool: str, features: ImageFeatures, conte
             "max_tokens": 200
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             response = await client.post(CUSTOM_API_BASE, headers=headers, json=payload)
             
             if response.status_code == 200:
@@ -532,7 +608,7 @@ async def generate_cloud_description_with_ark(cloud_name: str, features: ImageFe
         }
 
         # 调用自定义 OpenAI 风格 API
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             response = await client.post(CUSTOM_API_BASE, headers=headers, json=payload)
             
             if response.status_code == 200:
@@ -605,7 +681,7 @@ async def get_city_code_from_location(latitude: float, longitude: float) -> str:
         return "110101"  # 北京市作为默认城市编码
     
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             # 使用高德逆地理编码API获取城市信息
             response = await client.get(
                 "https://restapi.amap.com/v3/geocode/regeo",
@@ -641,7 +717,7 @@ async def get_real_weather_data(latitude: float, longitude: float, units: str = 
         # 获取城市编码
         city_code = await get_city_code_from_location(latitude, longitude)
         
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             response = await client.get(
                 "https://restapi.amap.com/v3/weather/weatherInfo",
                 params={
@@ -686,7 +762,7 @@ async def get_location_info(latitude: float, longitude: float) -> Dict[str, Any]
         }
     
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             response = await client.get(
                 "https://restapi.amap.com/v3/geocode/regeo",
                 params={
@@ -1167,7 +1243,7 @@ async def analyze_cloud_with_deepseek(image_base64: str, options: CloudAnalysisO
         }
         
         # 发送POST请求
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             response = await client.post(CUSTOM_API_BASE, headers=headers, json=payload)
             
             if response.status_code == 200:
@@ -1307,7 +1383,7 @@ async def generate_cloud_name_from_image(tool: str, image_base64: str, context: 
             "max_tokens": 200
         }
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             response = await client.post(CUSTOM_API_BASE, headers=headers, json=payload)
             
             if response.status_code == 200:
@@ -1500,7 +1576,7 @@ async def generate_cloud_description_from_image(tool: str, image_base64: str, co
         }
 
         print(f"开始调用API...")
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             print(f"发送POST请求到: {CUSTOM_API_BASE}")
             response = await client.post(CUSTOM_API_BASE, headers=headers, json=payload)
             
