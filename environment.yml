@@ -5,18 +5,17 @@ channels:  # 包的来源渠道
   - defaults     # Anaconda 官方包
 
 dependencies:  # 依赖列表
-  - python=3.9  # 指定 Python 版本
+  - python=3.10  # 指定 Python 版本
   - pip  # 包管理器
   - pip:
     - fastapi==0.109.2
     - uvicorn==0.27.1
-    - httpx==0.25.2
+    - httpx==0.28.1
     - supabase==2.15.2
-    - 'volcengine-python-sdk[ark]'
     - python-dotenv==1.0.0
     - openai==1.14.0
-
     - python-multipart==0.0.6
     - pydantic==2.5.0
     - typing-extensions==4.8.0
     - Pillow==10.1.0 
+    - volcengine-python-sdk==3.0.9
