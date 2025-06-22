@@ -19,3 +19,4 @@ dependencies:  # 依赖列表
     - typing-extensions==4.8.0
     - Pillow==10.1.0 
     - volcengine-python-sdk==3.0.9
+    - requests==2.31.0
