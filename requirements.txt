@@ -1,0 +1,23 @@
+# Web框架
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# HTTP客户端
+httpx==0.25.2
+
+# 数据库
+supabase==2.0.2
+
+# AI模型集成
+volcengine-python-sdk[ark]==1.0.82
+
+# 环境变量管理
+python-dotenv==1.0.0
+
+# 工具库
+python-multipart==0.0.6
+pydantic==2.5.0
+typing-extensions==4.8.0
+
+# 图像处理
+Pillow==10.1.0 

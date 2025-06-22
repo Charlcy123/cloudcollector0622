@@ -1,0 +1,309 @@
+/* ProfileCard CSS */
+.pc-card-wrapper {
+  --card-opacity: 0.15;
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --background-x: 50%;
+  --background-y: 50%;
+  --pointer-from-center: 0;
+  --pointer-from-top: 0;
+  --pointer-from-left: 0;
+  --rotate-x: 0deg;
+  --rotate-y: 0deg;
+  --icon: none;
+  --grain: none;
+  --behind-gradient: none;
+  --inner-gradient: none;
+  
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.pc-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  transform: rotateX(var(--rotate-x)) rotateY(var(--rotate-y));
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease-out;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.pc-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--behind-gradient);
+  opacity: var(--card-opacity);
+  border-radius: inherit;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.pc-inside {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--inner-gradient);
+  border-radius: inherit;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.pc-shine {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    circle at var(--pointer-x) var(--pointer-y),
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.1) 20%,
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: inherit;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.pc-glare {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: inherit;
+  z-index: 4;
+  pointer-events: none;
+  transform: translateX(-100%);
+}
+
+.pc-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 5;
+}
+
+.pc-avatar-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  transition: transform 0.3s ease;
+}
+
+.pc-user-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 0 0 12px 12px;
+}
+
+.pc-user-details {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pc-mini-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.pc-mini-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pc-user-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pc-handle {
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  opacity: 0.9;
+}
+
+.pc-status {
+  font-size: 10px;
+  color: #4ade80;
+  font-weight: 500;
+}
+
+.pc-contact-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.pc-contact-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.pc-details {
+  text-align: center;
+  color: white;
+}
+
+.pc-details h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.pc-details p {
+  font-size: 14px;
+  margin: 0;
+  opacity: 0.8;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Active states */
+.pc-card-wrapper.active .pc-card {
+  transform: rotateX(var(--rotate-x)) rotateY(var(--rotate-y)) scale(1.02);
+}
+
+.pc-card.active .pc-shine {
+  opacity: 1;
+}
+
+.pc-card.active .pc-glare {
+  opacity: 1;
+  transform: translateX(100%);
+  transition: transform 0.6s ease, opacity 0.3s ease;
+}
+
+.pc-card.active .avatar {
+  transform: scale(1.05);
+}
+
+/* Hover effects */
+.pc-card:hover {
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pc-content {
+    padding: 16px;
+  }
+  
+  .pc-details h3 {
+    font-size: 16px;
+  }
+  
+  .pc-details p {
+    font-size: 12px;
+  }
+  
+  .pc-user-info {
+    padding: 10px;
+  }
+  
+  .pc-mini-avatar {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .pc-handle {
+    font-size: 11px;
+  }
+  
+  .pc-status {
+    font-size: 9px;
+  }
+  
+  .pc-contact-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+}
+
+/* Animation keyframes */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Grain texture overlay */
+.pc-inside::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: var(--grain);
+  opacity: 0.1;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  z-index: 6;
+} 
