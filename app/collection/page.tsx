@@ -341,36 +341,6 @@ export default function CollectionPage() {
           >
             <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
-          
-          {/* 临时调试按钮 */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={async () => {
-              console.log('=== API调试测试 ===')
-              console.log('当前用户:', user)
-              console.log('认证状态:', { user: !!user, loading: authLoading })
-              
-              try {
-                // 测试简单的API调用
-                const testResponse = await fetch(`${API_BASE_URL}/api/capture-tools`)
-                console.log('测试API响应状态:', testResponse.status)
-                const testData = await testResponse.json()
-                console.log('测试API数据:', testData)
-                
-                // 测试认证API调用
-                const authResponse = await authenticatedFetch('/api/v2/my-collections?page=1&page_size=5')
-                console.log('认证API响应状态:', authResponse.status)
-                const authData = await authResponse.json()
-                console.log('认证API数据:', authData)
-              } catch (error) {
-                console.error('API测试失败:', error)
-              }
-            }}
-            className="text-white hover:bg-white/20 backdrop-blur-sm text-xs"
-          >
-            调试API
-          </Button>
         </div>
 
         {clouds.length === 0 ? (
