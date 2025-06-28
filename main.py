@@ -881,6 +881,15 @@ async def get_cloud_collection_detail(collection_id: str):
             "view_count": collection["view_count"] + 1
         }).eq("id", collection_id).execute()
         
+        # 处理位置信息 - 如果是"当前位置"则根据工具显示个性化文案
+        location_data = collection["location"]
+        if location_data and isinstance(location_data, dict) and "address" in location_data:
+            original_location = location_data["address"]
+            personalized_location = get_personalized_location_text(collection["tool_id"], original_location)
+            # 创建新的位置数据副本，更新地址
+            location_data = location_data.copy()
+            location_data["address"] = personalized_location
+        
         # 构建响应数据
         response_data = {
             "id": collection["id"],
@@ -897,7 +906,7 @@ async def get_cloud_collection_detail(collection_id: str):
             "capture_time": collection["capture_time"],
             "is_favorite": collection["is_favorite"],
             "view_count": collection["view_count"] + 1,
-            "location": collection["location"],
+            "location": location_data,
             "weather": collection["weather"],
             "created_at": collection["created_at"]
         }
@@ -2457,6 +2466,15 @@ async def get_my_cloud_collections(
         # 构建响应数据
         collections = []
         for collection in result.data:
+            # 处理位置信息 - 如果是"当前位置"则根据工具显示个性化文案
+            location_data = collection["location"]
+            if location_data and isinstance(location_data, dict) and "address" in location_data:
+                original_location = location_data["address"]
+                personalized_location = get_personalized_location_text(collection["tool_id"], original_location)
+                # 创建新的位置数据副本，更新地址
+                location_data = location_data.copy()
+                location_data["address"] = personalized_location
+            
             response_data = {
                 "id": collection["id"],
                 "user_id": collection["user_id"],
@@ -2472,7 +2490,7 @@ async def get_my_cloud_collections(
                 "capture_time": collection["capture_time"],
                 "is_favorite": collection["is_favorite"],
                 "view_count": collection["view_count"],
-                "location": collection["location"],
+                "location": location_data,
                 "weather": collection["weather"],
                 "created_at": collection["created_at"]
             }
@@ -2852,6 +2870,15 @@ async def get_user_cloud_collections(
         # 构建响应数据
         collections = []
         for collection in result.data:
+            # 处理位置信息 - 如果是"当前位置"则根据工具显示个性化文案
+            location_data = collection["location"]
+            if location_data and isinstance(location_data, dict) and "address" in location_data:
+                original_location = location_data["address"]
+                personalized_location = get_personalized_location_text(collection["tool_id"], original_location)
+                # 创建新的位置数据副本，更新地址
+                location_data = location_data.copy()
+                location_data["address"] = personalized_location
+            
             response_data = {
                 "id": collection["id"],
                 "user_id": collection["user_id"],
@@ -2867,7 +2894,7 @@ async def get_user_cloud_collections(
                 "capture_time": collection["capture_time"],
                 "is_favorite": collection["is_favorite"],
                 "view_count": collection["view_count"],
-                "location": collection["location"],
+                "location": location_data,
                 "weather": collection["weather"],
                 "created_at": collection["created_at"]
             }
@@ -2882,6 +2909,33 @@ async def get_user_cloud_collections(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取用户云朵收藏失败: {str(e)}")
+
+# ============== 工具相关辅助函数 ==============
+
+def get_personalized_location_text(tool_id: str, location_text: str) -> str:
+    """
+    根据工具类型和位置文本返回个性化的位置描述
+    
+    Args:
+        tool_id: 工具ID (glassCover, hand, catPaw, broom)
+        location_text: 原始位置文本
+    
+    Returns:
+        个性化的位置描述文本
+    """
+    # 如果位置不是"当前位置"，直接返回原文本
+    if location_text != "当前位置":
+        return location_text
+    
+    # 根据不同工具返回个性化文案
+    tool_location_map = {
+        "glassCover": "意念定位中…",          # 水晶球工具
+        "hand": "摸鱼时区深处",               # 手工具
+        "catPaw": "躲猫猫冠军认证点🐾",        # 猫爪工具
+        "broom": "所有可能性的交汇处"          # 红笔工具
+    }
+    
+    return tool_location_map.get(tool_id, location_text)
 
 if __name__ == "__main__":
     import uvicorn
