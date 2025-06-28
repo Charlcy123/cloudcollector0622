@@ -269,12 +269,12 @@ function CaptureContent() {
         // 下载分享图片
         const link = document.createElement('a')
         link.href = response.data.share_image_url
-        link.download = `${generatedName}_分享图.jpg`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+        // link.download = `${generatedName}_分享图.jpg`
+        // document.body.appendChild(link)
+        // link.click()
+        // document.body.removeChild(link)
         
-        alert('分享图片已生成并下载！')
+        // alert('分享图片已生成并下载！')
       } else {
         throw new Error(response.error || '分享图片生成失败')
       }
@@ -529,7 +529,7 @@ function CaptureContent() {
                         )}
                       </Button>
                       
-                      <Button
+                      {/* <Button
                         onClick={generateShareImage}
                         disabled={isGeneratingShare}
                         variant="outline"
@@ -546,7 +546,7 @@ function CaptureContent() {
                             生成分享图片
                           </>
                         )}
-                      </Button>
+                      </Button> */}
                     </div>
                   </motion.div>
                 )}

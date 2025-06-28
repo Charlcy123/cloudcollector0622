@@ -1,7 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from dotenv import load_dotenv
@@ -23,6 +21,7 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 import uuid
 import asyncio
+from io import BytesIO
 
 # 导入JWT认证模块
 from auth import get_current_user, get_current_user_id, get_optional_user
@@ -46,8 +45,7 @@ API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 # 创建 FastAPI 应用
 app = FastAPI(title="云彩收集手册 API", version="1.0.0")
 
-# 添加静态文件服务
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# 静态文件服务已移除 - 完全使用 Supabase Storage
 
 # ============== CORS 配置 ==============
 app.add_middleware(
@@ -1661,284 +1659,159 @@ class ShareImageResponse(BaseModel):
 
 async def generate_share_image(image_url: str, cloud_name: str, description: str, 
                              tool_icon: str, captured_at: str, location: str) -> str:
-    """生成分享图片"""
+    """生成分享图片并上传到Storage"""
     try:
-        print(f"=== 开始生成分享图片 ===")
-        print(f"原图URL: {image_url[:100]}...")  # 只显示前100个字符
-        print(f"云朵名称: {cloud_name}")
-        print(f"描述: {description}")
-        print(f"工具图标: {tool_icon}")
-        print(f"拍摄时间: {captured_at}")
-        print(f"地点: {location}")
+        print(f"开始生成分享图片: {cloud_name}")
         
-        # 下载或处理原图
-        original_image = None
-        if image_url.startswith('http'):
-            print("从HTTP URL加载图片...")
-            response = requests.get(image_url, timeout=10)
+        # 下载原始图片
+        if image_url.startswith('data:image'):
+            # 处理 base64 图片
+            header, encoded = image_url.split(',', 1)
+            image_data = base64.b64decode(encoded)
+            original_image = Image.open(BytesIO(image_data))
+        else:
+            # 处理 URL 图片
+            response = requests.get(image_url)
             response.raise_for_status()
-            original_image = Image.open(io.BytesIO(response.content))
-        elif image_url.startswith('data:image'):
-            print("从base64数据加载图片...")
-            # base64格式: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...
-            try:
-                header, data = image_url.split(',', 1)
-                print(f"Base64 header: {header}")
-                print(f"Base64 data length: {len(data)}")
-                image_data = base64.b64decode(data)
-                print(f"Decoded image data length: {len(image_data)}")
-                original_image = Image.open(io.BytesIO(image_data))
-                print(f"图片加载成功，格式: {original_image.format}, 模式: {original_image.mode}")
-            except Exception as e:
-                print(f"Base64图片解析失败: {str(e)}")
-                # 如果base64解析失败，创建一个默认的占位图片
-                original_image = Image.new('RGB', (400, 300), color='lightblue')
-                draw_placeholder = ImageDraw.Draw(original_image)
-                draw_placeholder.text((150, 140), "云朵图片", fill='white')
-        else:
-            print("从本地文件路径加载图片...")
-            # 本地文件路径
-            original_image = Image.open(image_url)
+            original_image = Image.open(BytesIO(response.content))
         
-        print(f"原图尺寸: {original_image.size}")
+        # 转换为RGB模式（如果需要）
+        if original_image.mode != 'RGB':
+            original_image = original_image.convert('RGB')
         
-        # 创建分享图片画布 (正方形，适合社交媒体分享)
-        canvas_size = (800, 800)
-        canvas = Image.new('RGB', canvas_size, color='white')
-        print(f"创建画布: {canvas_size}")
+        # 设置画布大小和布局参数
+        canvas_width = 800
+        canvas_height = 1000
+        padding = 40
         
-        # 调整原图尺寸，保持比例
-        original_ratio = original_image.width / original_image.height
-        if original_ratio > 1:  # 横图
-            new_width = 700
-            new_height = int(700 / original_ratio)
-        else:  # 竖图或正方形
-            new_height = 500
-            new_width = int(500 * original_ratio)
+        # 计算图片区域
+        image_area_height = 400
+        image_width = canvas_width - 2 * padding
+        image_height = image_area_height
         
-        # 确保图片不超出画布
-        if new_width > 700:
-            new_width = 700
-            new_height = int(700 / original_ratio)
-        if new_height > 500:
-            new_height = 500
-            new_width = int(500 * original_ratio)
-            
-        resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        print(f"调整后图片尺寸: {resized_image.size}")
-        
-        # 将调整后的图片居中粘贴到画布上
-        paste_x = (canvas_size[0] - new_width) // 2
-        paste_y = 50  # 从顶部留出空间放标题
-        canvas.paste(resized_image, (paste_x, paste_y))
-        print(f"图片粘贴位置: ({paste_x}, {paste_y})")
-        
-        # 创建绘图对象
+        # 创建画布
+        canvas = Image.new('RGB', (canvas_width, canvas_height), 'white')
         draw = ImageDraw.Draw(canvas)
-        print("创建绘图对象成功")
         
-        # 简化字体加载 - 优先使用支持中文的字体
-        print("=== 开始字体加载 ===")
+        # 调整原始图片大小并居中
+        original_image = original_image.resize((image_width, image_height), Image.Resampling.LANCZOS)
+        canvas.paste(original_image, (padding, padding))
         
-        # 首先尝试加载支持中文的系统字体
-        title_font = None
-        desc_font = None
-        info_font = None
-        
-        # 网站字体配置 - 与前端保持一致
-        print("=== 开始字体加载（使用网站字体配置）===")
-        
-        # 首先尝试加载支持中文的系统字体
-        title_font = None
-        desc_font = None
-        info_font = None
-        
-        # 字体优先级配置（与网站CSS保持一致）
-        website_font_paths = [
-            # 1. 项目字体目录中的PF频凡胡涂体
-            "fonts/PFanHuTuTi.ttf",
-            "fonts/PF频凡胡涂体.ttf", 
-            # 2. macOS系统字体（与网站CSS一致）
-            "/System/Library/Fonts/PingFang.ttc",  # PingFang SC
-            "/System/Library/Fonts/Hiragino Sans GB.ttc",  # Hiragino Sans GB
-            "/System/Library/Fonts/STHeiti Medium.ttc",  # Microsoft YaHei 替代
-            "/System/Library/Fonts/STHeiti Light.ttc",  # 微软雅黑 替代
-            # 3. 系统备用字体
-            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",  # Arial Unicode
-            "/System/Library/Fonts/Helvetica.ttc",  # Helvetica Neue 替代
-            "/System/Library/Fonts/Supplemental/Arial.ttf",  # Arial
-        ]
-        
-        font_loaded = False
-        loaded_font_name = "未知"
-        
-        for font_path in website_font_paths:
+        # 设置字体（使用系统字体）
+        try:
+            title_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 36)
+            desc_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 20)
+            meta_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 16)
+        except:
             try:
-                if os.path.exists(font_path):
-                    title_font = ImageFont.truetype(font_path, 28)
-                    desc_font = ImageFont.truetype(font_path, 18)
-                    info_font = ImageFont.truetype(font_path, 14)
-                    loaded_font_name = os.path.basename(font_path)
-                    print(f"✅ 使用网站字体: {font_path}")
-                    print(f"   字体名称: {loaded_font_name}")
-                    font_loaded = True
-                    break
-            except Exception as e:
-                print(f"⚠️ 字体 {font_path} 加载失败: {str(e)}")
-                continue
-        
-        # 如果所有字体都加载失败，使用默认字体
-        if not font_loaded:
-            print("⚠️ 所有网站字体加载失败，使用默认字体")
-            try:
-                # 最后尝试使用默认字体，但增大字号
+                title_font = ImageFont.truetype("arial.ttf", 36)
+                desc_font = ImageFont.truetype("arial.ttf", 20)
+                meta_font = ImageFont.truetype("arial.ttf", 16)
+            except:
                 title_font = ImageFont.load_default()
-                desc_font = ImageFont.load_default() 
-                info_font = ImageFont.load_default()
-                loaded_font_name = "系统默认字体"
-                print("✅ 使用默认字体")
-            except Exception as e:
-                print(f"❌ 默认字体也加载失败: {str(e)}")
-                # 如果连默认字体都失败，创建None值，后面会处理
-                title_font = None
-                desc_font = None
-                info_font = None
-                loaded_font_name = "无字体"
+                desc_font = ImageFont.load_default()
+                meta_font = ImageFont.load_default()
         
-        # 绘制标题区域背景
-        title_bg_height = 40
-        draw.rectangle([0, 0, canvas_size[0], title_bg_height], fill='#f8f9fa')
-        print("✅ 标题背景绘制完成")
+        # 文本区域起始位置
+        text_y = padding + image_height + 30
         
-        # 绘制云朵名称（标题）- 使用最简单的方法
-        tool_name = get_tool_name(tool_icon)
-        title_text = f"{tool_icon} {cloud_name}"
-        print(f"准备绘制标题: '{title_text}'")
+        # 绘制工具图标和云朵名称
+        icon_text = f"{tool_icon} {cloud_name}"
+        draw.text((padding, text_y), icon_text, fill='black', font=title_font)
+        text_y += 50
         
-        # 简化标题绘制 - 不计算居中，直接左对齐
-        try:
-            if title_font:
-                draw.text((20, 8), title_text, fill='#2d3748', font=title_font)
+        # 绘制描述（支持换行）
+        max_width = canvas_width - 2 * padding
+        wrapped_description = []
+        words = description.split()
+        current_line = ""
+        
+        for word in words:
+            test_line = f"{current_line} {word}".strip()
+            bbox = draw.textbbox((0, 0), test_line, font=desc_font)
+            if bbox[2] <= max_width:
+                current_line = test_line
             else:
-                draw.text((20, 8), title_text, fill='#2d3748')
-            print(f"✅ 标题绘制完成")
-        except Exception as e:
-            print(f"❌ 标题绘制失败: {str(e)}")
-            # 最简单的绘制方法
-            draw.text((20, 8), title_text, fill='black')
-            print("✅ 使用最简单方法重新绘制标题")
+                if current_line:
+                    wrapped_description.append(current_line)
+                current_line = word
         
-        # 绘制描述文字（在图片下方）- 简化处理
-        desc_y = paste_y + new_height + 20
-        print(f"准备绘制描述，起始位置: y={desc_y}")
+        if current_line:
+            wrapped_description.append(current_line)
         
-        # 简化描述处理 - 不换行，直接截断
-        max_desc_length = 50
-        if len(description) > max_desc_length:
-            short_description = description[:max_desc_length] + "..."
-        else:
-            short_description = description
+        for line in wrapped_description:
+            draw.text((padding, text_y), line, fill='#333333', font=desc_font)
+            text_y += 30
         
-        print(f"描述文字: '{short_description}'")
+        text_y += 20
         
+        # 绘制元信息
+        draw.text((padding, text_y), f"📅 {captured_at}", fill='#666666', font=meta_font)
+        text_y += 25
+        draw.text((padding, text_y), f"📍 {location}", fill='#666666', font=meta_font)
+        text_y += 40
+        
+        # 绘制底部品牌信息
+        brand_text = "🌤️ 云朵收集器 - 捕捉天空中的每一片诗意"
+        draw.text((padding, text_y), brand_text, fill='#999999', font=meta_font)
+        
+        # 将图片保存到内存
+        img_buffer = BytesIO()
+        canvas.save(img_buffer, 'JPEG', quality=90)
+        img_buffer.seek(0)
+        
+        print(f"✅ 分享图片已生成，准备上传到Storage")
+        
+        # 生成唯一文件名
+        import uuid
+        from datetime import datetime, timezone
+        timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
+        file_name = f"share_{timestamp}_{uuid.uuid4().hex[:8]}.jpg"
+        
+        # 构建文件路径：shares/year/month/filename
+        now = datetime.now(timezone.utc)
+        year = now.year
+        month = f"{now.month:02d}"
+        file_path = f"shares/{year}/{month}/{file_name}"
+        
+        print(f"开始上传分享图片到 Storage: cloud-images/{file_path}")
+        
+        # 上传到Supabase Storage
         try:
-            if desc_font:
-                draw.text((20, desc_y), short_description, fill='#4a5568', font=desc_font)
-            else:
-                draw.text((20, desc_y), short_description, fill='#4a5568')
-            print(f"✅ 描述绘制完成")
-        except Exception as e:
-            print(f"❌ 描述绘制失败: {str(e)}")
-            # 最简单的绘制方法
-            draw.text((20, desc_y), short_description, fill='black')
-            print("✅ 使用最简单方法重新绘制描述")
-        
-        # 绘制底部信息
-        bottom_y = canvas_size[1] - 60
-        
-        # 绘制底部背景
-        draw.rectangle([0, bottom_y, canvas_size[0], canvas_size[1]], fill='#f7fafc')
-        print("✅ 底部背景绘制完成")
-        
-        # 时间和地点信息 - 简化处理
-        time_text = f"时间: {captured_at}"
-        location_text = f"地点: {location}"
-        brand_text = "云彩收集手册"
-        
-        print(f"准备绘制底部信息:")
-        print(f"  时间: '{time_text}'")
-        print(f"  地点: '{location_text}'")
-        print(f"  品牌: '{brand_text}'")
-        
-        # 绘制时间
-        try:
-            if info_font:
-                draw.text((20, bottom_y + 10), time_text, fill='#718096', font=info_font)
-            else:
-                draw.text((20, bottom_y + 10), time_text, fill='#718096')
-            print(f"✅ 时间信息绘制完成")
-        except Exception as e:
-            print(f"❌ 时间信息绘制失败: {str(e)}")
-            draw.text((20, bottom_y + 10), time_text, fill='black')
-            print("✅ 使用最简单方法重新绘制时间")
-        
-        # 绘制地点
-        try:
-            if info_font:
-                draw.text((20, bottom_y + 30), location_text, fill='#718096', font=info_font)
-            else:
-                draw.text((20, bottom_y + 30), location_text, fill='#718096')
-            print(f"✅ 地点信息绘制完成")
-        except Exception as e:
-            print(f"❌ 地点信息绘制失败: {str(e)}")
-            draw.text((20, bottom_y + 30), location_text, fill='black')
-            print("✅ 使用最简单方法重新绘制地点")
-        
-        # 绘制品牌标识 - 简化右对齐
-        try:
-            if info_font:
-                draw.text((canvas_size[0] - 120, bottom_y + 20), brand_text, fill='#a0aec0', font=info_font)
-            else:
-                draw.text((canvas_size[0] - 120, bottom_y + 20), brand_text, fill='#a0aec0')
-            print(f"✅ 品牌标识绘制完成")
-        except Exception as e:
-            print(f"❌ 品牌标识绘制失败: {str(e)}")
-            draw.text((canvas_size[0] - 120, bottom_y + 20), brand_text, fill='gray')
-            print("✅ 使用最简单方法重新绘制品牌")
-        
-        # 添加字体信息显示（用于调试）
-        font_debug_text = f"字体: {loaded_font_name}"
-        try:
-            if info_font:
-                # 计算文字宽度以右对齐
-                bbox = draw.textbbox((0, 0), font_debug_text, font=info_font)
-                text_width = bbox[2] - bbox[0]
-                draw.text((canvas_size[0] - text_width - 10, bottom_y + 40), 
-                         font_debug_text, fill='#e2e8f0', font=info_font)
-            else:
-                draw.text((canvas_size[0] - 150, bottom_y + 40), 
-                         font_debug_text, fill='#e2e8f0')
-            print(f"✅ 字体信息显示完成: '{font_debug_text}'")
-        except Exception as e:
-            print(f"⚠️ 字体信息显示失败: {str(e)}")
-            # 不影响主要功能，忽略错误
-        
-        # 保存图片
-        output_filename = f"share_{uuid.uuid4().hex[:8]}.jpg"
-        output_path = f"static/shares/{output_filename}"
-        
-        # 确保目录存在
-        os.makedirs("static/shares", exist_ok=True)
-        
-        # 保存图片
-        canvas.save(output_path, 'JPEG', quality=90)
-        
-        print(f"✅ 分享图片已保存: {output_path}")
-        
-        # 返回可访问的URL
-        share_url = f"{API_BASE_URL}/{output_path}"
-        print(f"✅ 分享图片URL: {share_url}")
-        return share_url
+            result = supabase_admin.storage.from_("cloud-images").upload(
+                file_path, 
+                img_buffer.getvalue(),
+                {
+                    "content-type": "image/jpeg",
+                    "cache-control": "3600"
+                }
+            )
+            
+            if hasattr(result, 'error') and result.error:
+                raise Exception(f"Storage上传失败: {result.error.message}")
+            
+            # 获取公共URL
+            public_url = supabase_admin.storage.from_("cloud-images").get_public_url(file_path)
+            
+            # 如果返回的不是字符串或为空，使用备用方案
+            if not isinstance(public_url, str) or not public_url:
+                # 备用方案：手动构建URL
+                public_url = f"{supabase_url}/storage/v1/object/public/cloud-images/{file_path}"
+            
+            print(f"✅ 分享图片已上传到Storage: {public_url}")
+            return public_url
+            
+        except Exception as storage_error:
+            print(f"⚠️ Storage上传失败: {str(storage_error)}")
+            
+            # 降级方案：返回base64数据
+            print("🔧 使用base64降级方案")
+            img_buffer.seek(0)
+            img_data = img_buffer.getvalue()
+            base64_data = base64.b64encode(img_data).decode('utf-8')
+            share_url = f"data:image/jpeg;base64,{base64_data}"
+            print(f"✅ 分享图片转换为base64格式，数据长度: {len(base64_data)}")
+            return share_url
         
     except Exception as e:
         print(f"❌ 生成分享图片失败: {str(e)}")

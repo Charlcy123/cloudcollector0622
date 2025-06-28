@@ -12,6 +12,8 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useAuth } from "@/contexts/AuthContext"
 import { authenticatedFetch, API_BASE_URL } from "@/lib/api"
+import { toPng } from 'html-to-image';
+import download from "downloadjs"
 
 interface CloudItem {
   id: string
@@ -37,7 +39,7 @@ export default function CollectionPage() {
   const loadUserCollections = async () => {
     // 如果认证还在加载中，等待
     if (authLoading) return
-    
+
     // 如果用户未登录，重定向到登录页
     if (!user) {
       console.log('用户未登录，重定向到登录页')
@@ -54,10 +56,10 @@ export default function CollectionPage() {
 
       // 使用JWT认证的API获取用户收藏
       const response = await authenticatedFetch('/api/v2/my-collections?page=1&page_size=100')
-      
+
       console.log('API响应状态:', response.status)
       console.log('API响应headers:', Object.fromEntries(response.headers.entries()))
-      
+
       if (!response.ok) {
         console.error('API请求失败，状态码:', response.status)
         if (response.status === 401) {
@@ -74,13 +76,13 @@ export default function CollectionPage() {
       console.log('获取到的原始数据:', data)
       console.log('收藏数量:', data.collections?.length || 0)
       console.log('完整的collections数组:', JSON.stringify(data.collections, null, 2))
-      
+
       // 检查数据结构
       if (!data.collections || !Array.isArray(data.collections)) {
         console.error('数据格式错误: collections不是数组', data)
         throw new Error('数据格式错误')
       }
-      
+
       // 转换数据格式以匹配现有UI
       const cloudItems: CloudItem[] = data.collections.map((collection: any, index: number) => {
         console.log(`处理第${index + 1}个收藏项:`, {
@@ -89,10 +91,10 @@ export default function CollectionPage() {
           tool_id: collection.tool_id,
           original_image_url: collection.original_image_url
         })
-        
+
         // 处理位置信息 - 修复版本
         let locationText = '未知位置';
-        
+
         // 尝试从不同的数据结构中获取位置信息
         if (collection.location) {
           if (typeof collection.location === 'string') {
@@ -106,13 +108,13 @@ export default function CollectionPage() {
             locationText = collection.location[0]?.address || '未知位置';
           }
         }
-        
+
         console.log(`收藏项 ${index + 1} 的位置信息:`, {
           原始location: collection.location,
           解析后的locationText: locationText,
           工具ID: collection.tool_id
         });
-        
+
         // 如果位置是默认值或空值，使用工具特定的个性化位置
         if (locationText === '未知位置' || locationText === '位置未知' || !locationText || locationText.trim() === '') {
           const toolSpecificLocations = {
@@ -126,13 +128,13 @@ export default function CollectionPage() {
             'cat-paw': '躲猫猫冠军认证点🐾',
             'red-pen': '所有可能性的交汇处'
           };
-          
+
           const toolId = collection.tool_id;
           locationText = toolSpecificLocations[toolId as keyof typeof toolSpecificLocations] || '神秘维度';
-          
+
           console.log(`使用工具特定位置: 工具ID=${toolId}, 位置=${locationText}`);
         }
-        
+
         const cloudItem = {
           id: collection.id,
           image: collection.original_image_url,
@@ -143,7 +145,7 @@ export default function CollectionPage() {
           capturedAt: collection.capture_time,
           location: locationText
         }
-        
+
         console.log(`转换后的云朵项:`, cloudItem)
         return cloudItem
       })
@@ -152,7 +154,7 @@ export default function CollectionPage() {
       console.log('转换后的云朵数据数量:', cloudItems.length)
       console.log('转换后的云朵数据:', JSON.stringify(cloudItems, null, 2))
       console.log('即将设置到state的数据:', cloudItems)
-      
+
       // 添加位置信息的详细调试
       cloudItems.forEach((item, index) => {
         console.log(`云朵 ${index + 1} 的位置信息:`, {
@@ -163,7 +165,7 @@ export default function CollectionPage() {
           toolIcon: item.toolIcon
         });
       });
-      
+
       setClouds(cloudItems)
       console.log('setClouds 调用完成')
 
@@ -184,7 +186,7 @@ export default function CollectionPage() {
       const response = await authenticatedFetch(`/api/v2/cloud-collections/${id}`, {
         method: 'DELETE'
       })
-      
+
       if (!response.ok) {
         throw new Error('删除失败')
       }
@@ -193,7 +195,7 @@ export default function CollectionPage() {
       const updatedClouds = clouds.filter((cloud) => cloud.id !== id)
       setClouds(updatedClouds)
       setSelectedCloud(null)
-      
+
     } catch (error) {
       console.error('删除云朵失败:', error)
       alert(`删除失败: ${error instanceof Error ? error.message : '未知错误'}`)
@@ -209,6 +211,14 @@ export default function CollectionPage() {
       hour: "2-digit",
       minute: "2-digit",
     })
+  }
+
+  const onShare = () => {
+
+
+    toPng(document.getElementById('finalImage') as HTMLElement)
+      .then((dataUrl) => download(dataUrl, 'share-node.png'));
+
   }
 
   // 认证加载状态
@@ -252,7 +262,7 @@ export default function CollectionPage() {
   }
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="min-h-screen relative overflow-hidden"
       style={{
@@ -275,9 +285,9 @@ export default function CollectionPage() {
         cameraDistance={20}
         disableRotation={false}
       />
-      
+
       {/* 半透明遮罩层，让内容更易读 */}
-      <div 
+      <div
         className="absolute inset-0 backdrop-blur-[0.5px] z-10"
         style={{
           backgroundColor: 'rgba(0, 0, 0, 0.4)',
@@ -306,10 +316,10 @@ export default function CollectionPage() {
         {/* 头部 */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => router.back()} 
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.back()}
               className="text-white hover:bg-white/20 backdrop-blur-sm"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -388,40 +398,51 @@ export default function CollectionPage() {
                 className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="relative aspect-video">
-                  <Image
-                    src={selectedCloud.image || "/placeholder.svg"}
-                    alt={selectedCloud.name}
-                    fill
-                    className="object-cover rounded-t-2xl"
-                  />
-                  <div className="absolute top-4 right-4 text-3xl bg-white/90 rounded-full p-2">
-                    {selectedCloud.toolIcon}
-                  </div>
-                </div>
-
-                <div className="p-6 space-y-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-sky-800 mb-2">{selectedCloud.name}</h2>
-                    <p className="text-sky-600">{selectedCloud.description}</p>
-                  </div>
-
-                  <div className="space-y-2 text-sm text-sky-500">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{selectedCloud.toolIcon}</span>
-                      <span>使用 {selectedCloud.tool} 捕获</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>{formatDate(selectedCloud.capturedAt)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      <span>{selectedCloud.location}</span>
+                <div>
+                <div  id="finalImage">
+                <div className="relative aspect-video" >
+                    <Image
+                      src={selectedCloud.image || "/placeholder.svg"}
+                      alt={selectedCloud.name}
+                      fill
+                      className="object-cover rounded-t-2xl"
+                    />
+                    <div className="absolute top-4 right-4 text-3xl bg-white/90 rounded-full p-2">
+                      {selectedCloud.toolIcon}
                     </div>
                   </div>
 
-                  <div className="flex gap-3 pt-4">
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <h2 className="text-2xl font-bold text-sky-800 mb-2">{selectedCloud.name}</h2>
+                      <p className="text-sky-600">{selectedCloud.description}</p>
+                    </div>
+
+                    <div className="space-y-2 text-sm text-sky-500">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{selectedCloud.toolIcon}</span>
+                        <span>使用 {selectedCloud.tool} 捕获</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        <span>{formatDate(selectedCloud.capturedAt)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        <span>{selectedCloud.location}</span>
+                      </div>
+                    </div>
+                  </div>
+                   </div> 
+
+                  <div className="flex gap-3 p-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => onShare()}
+                      className="flex-1"
+                    >
+                      分享
+                    </Button>
                     <Button
                       variant="outline"
                       onClick={() => setSelectedCloud(null)}
@@ -439,6 +460,7 @@ export default function CollectionPage() {
                     </Button>
                   </div>
                 </div>
+
               </motion.div>
             </motion.div>
           )}
