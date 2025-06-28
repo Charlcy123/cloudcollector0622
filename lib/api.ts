@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 
 // API基础URL
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.cloudcollector.xyz'
 
 // 获取当前用户的JWT Token
 const getAuthToken = async (): Promise<string | null> => {

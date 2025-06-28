@@ -6,7 +6,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 // ============== 基础配置 ==============
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.cloudcollector.xyz';
 
 // API 请求配置
 const DEFAULT_HEADERS = {
