@@ -56,7 +56,8 @@ app.add_middleware(
         "http://localhost:3000",  # Next.js 开发服务器
         "http://127.0.0.1:3000",
         "http://localhost:3001",  # 备用端口
-        "https://your-domain.com",  # 生产环境域名（请替换为实际域名）
+        "https://www.cloudcollector.xyz",
+        "https://cloudcollector.xyz"  # 生产环境域名（请替换为实际域名）
     ],
     allow_credentials=True,
     allow_methods=["*"],
