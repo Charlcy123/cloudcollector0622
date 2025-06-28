@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card"
 import Particles from "@/components/ui/particles"
 import ProfileCard from "@/components/ui/profile-card"
 import SimpleCard from "@/components/ui/simple-card"
-import { ArrowLeft, Cloud, Trash2, Calendar, MapPin, Loader2, RefreshCw } from "lucide-react"
+import { ArrowLeft, Cloud, Trash2, Calendar, MapPin, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useAuth } from "@/contexts/AuthContext"
@@ -30,12 +30,11 @@ export default function CollectionPage() {
   const [clouds, setClouds] = useState<CloudItem[]>([])
   const [selectedCloud, setSelectedCloud] = useState<CloudItem | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string>('')
   const containerRef = useRef<HTMLDivElement>(null)
 
   // 加载用户的云朵收藏
-  const loadUserCollections = async (showRefreshingState = false) => {
+  const loadUserCollections = async () => {
     // 如果认证还在加载中，等待
     if (authLoading) return
     
@@ -47,11 +46,7 @@ export default function CollectionPage() {
     }
 
     try {
-      if (showRefreshingState) {
-        setIsRefreshing(true)
-      } else {
-        setIsLoading(true)
-      }
+      setIsLoading(true)
       setError('')
 
       console.log('开始加载用户云朵收藏...')
@@ -177,18 +172,12 @@ export default function CollectionPage() {
       setError(error instanceof Error ? error.message : '加载失败')
     } finally {
       setIsLoading(false)
-      setIsRefreshing(false)
     }
   }
 
   useEffect(() => {
     loadUserCollections()
   }, [user, authLoading, router])
-
-  // 手动刷新
-  const handleRefresh = () => {
-    loadUserCollections(true)
-  }
 
   const deleteCloud = async (id: string) => {
     try {
@@ -330,17 +319,6 @@ export default function CollectionPage() {
               <h1 className="text-2xl font-bold text-white drop-shadow-md">我的天空</h1>
             </div>
           </div>
-          
-          {/* 刷新按钮 */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="text-white hover:bg-white/20 backdrop-blur-sm"
-          >
-            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
         </div>
 
         {clouds.length === 0 ? (

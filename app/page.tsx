@@ -212,15 +212,6 @@ export default function HomePage() {
             className="text-center mt-20 text-slate-500"
           >
             <p className="text-sm">捕捉自然的温柔一瞬</p>
-            
-            {/* 开发者测试链接 */}
-            <div className="mt-8">
-              <Link href="/test-api">
-                <Button variant="ghost" size="sm" className="text-xs text-slate-400 hover:text-slate-600">
-                  🔧 API 测试面板
-                </Button>
-              </Link>
-            </div>
           </motion.div>
         </div>
       </AuroraBackground>
