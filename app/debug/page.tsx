@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/AuthContext"
-import { authenticatedFetch } from "@/lib/api"
+import { authenticatedFetch, API_BASE_URL } from "@/lib/api"
 
 export default function DebugPage() {
   const { user, loading: authLoading } = useAuth()
@@ -32,7 +32,7 @@ export default function DebugPage() {
     try {
       // 测试1: 基础API调用
       console.log('测试基础API...')
-      const basicResponse = await fetch('http://localhost:8000/api/capture-tools')
+      const basicResponse = await fetch(`${API_BASE_URL}/api/capture-tools`)
       debug.apiTests.basicAPI = {
         status: basicResponse.status,
         ok: basicResponse.ok,
@@ -92,7 +92,7 @@ export default function DebugPage() {
         console.log('测试直接数据库查询...')
         try {
           // 使用管理员权限直接查询数据库
-          const directResponse = await fetch(`http://localhost:8000/api/auth/test`, {
+          const directResponse = await fetch(`${API_BASE_URL}/api/auth/test`, {
             headers: {
               'Authorization': `Bearer ${session.access_token}`
             }

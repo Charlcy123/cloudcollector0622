@@ -11,7 +11,7 @@ import { ArrowLeft, Cloud, Trash2, Calendar, MapPin, Loader2, RefreshCw } from "
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useAuth } from "@/contexts/AuthContext"
-import { authenticatedFetch } from "@/lib/api"
+import { authenticatedFetch, API_BASE_URL } from "@/lib/api"
 
 interface CloudItem {
   id: string
@@ -353,7 +353,7 @@ export default function CollectionPage() {
               
               try {
                 // 测试简单的API调用
-                const testResponse = await fetch('http://localhost:8000/api/capture-tools')
+                const testResponse = await fetch(`${API_BASE_URL}/api/capture-tools`)
                 console.log('测试API响应状态:', testResponse.status)
                 const testData = await testResponse.json()
                 console.log('测试API数据:', testData)

@@ -40,6 +40,9 @@ except ImportError:
     EXIF_AVAILABLE = False
     print("⚠️ EXIF处理库未安装，将跳过位置信息提取")
 
+# API基础URL配置 - 支持环境变量切换
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
+
 # 创建 FastAPI 应用
 app = FastAPI(title="云彩收集手册 API", version="1.0.0")
 
@@ -1932,7 +1935,7 @@ async def generate_share_image(image_url: str, cloud_name: str, description: str
         print(f"✅ 分享图片已保存: {output_path}")
         
         # 返回可访问的URL
-        share_url = f"http://localhost:8000/{output_path}"
+        share_url = f"{API_BASE_URL}/{output_path}"
         print(f"✅ 分享图片URL: {share_url}")
         return share_url
         
