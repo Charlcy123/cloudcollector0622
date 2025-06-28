@@ -7,12 +7,14 @@ import { Card } from "@/components/ui/card"
 import Particles from "@/components/ui/particles"
 import ProfileCard from "@/components/ui/profile-card"
 import SimpleCard from "@/components/ui/simple-card"
-import { ArrowLeft, Cloud, Trash2, Calendar, MapPin } from "lucide-react"
+import { ArrowLeft, Cloud, Trash2, Calendar, MapPin, Loader2, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import { useAuth } from "@/contexts/AuthContext"
+import { authenticatedFetch } from "@/lib/api"
 
 interface CloudItem {
-  id: number
+  id: string
   image: string
   name: string
   description: string
@@ -24,20 +26,189 @@ interface CloudItem {
 
 export default function CollectionPage() {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const [clouds, setClouds] = useState<CloudItem[]>([])
   const [selectedCloud, setSelectedCloud] = useState<CloudItem | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [error, setError] = useState<string>('')
   const containerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const savedClouds = JSON.parse(localStorage.getItem("cloudCollection") || "[]")
-    setClouds(savedClouds)
-  }, [])
+  // 加载用户的云朵收藏
+  const loadUserCollections = async (showRefreshingState = false) => {
+    // 如果认证还在加载中，等待
+    if (authLoading) return
+    
+    // 如果用户未登录，重定向到登录页
+    if (!user) {
+      console.log('用户未登录，重定向到登录页')
+      router.push('/login')
+      return
+    }
 
-  const deleteCloud = (id: number) => {
-    const updatedClouds = clouds.filter((cloud) => cloud.id !== id)
-    setClouds(updatedClouds)
-    localStorage.setItem("cloudCollection", JSON.stringify(updatedClouds))
-    setSelectedCloud(null)
+    try {
+      if (showRefreshingState) {
+        setIsRefreshing(true)
+      } else {
+        setIsLoading(true)
+      }
+      setError('')
+
+      console.log('开始加载用户云朵收藏...')
+      console.log('当前用户:', user)
+
+      // 使用JWT认证的API获取用户收藏
+      const response = await authenticatedFetch('/api/v2/my-collections?page=1&page_size=100')
+      
+      console.log('API响应状态:', response.status)
+      console.log('API响应headers:', Object.fromEntries(response.headers.entries()))
+      
+      if (!response.ok) {
+        console.error('API请求失败，状态码:', response.status)
+        if (response.status === 401) {
+          console.log('Token过期或无效，重定向到登录页')
+          router.push('/login')
+          return
+        }
+        const errorText = await response.text()
+        console.error('错误响应内容:', errorText)
+        throw new Error(`API请求失败: ${response.status} - ${errorText}`)
+      }
+
+      const data = await response.json()
+      console.log('获取到的原始数据:', data)
+      console.log('收藏数量:', data.collections?.length || 0)
+      console.log('完整的collections数组:', JSON.stringify(data.collections, null, 2))
+      
+      // 检查数据结构
+      if (!data.collections || !Array.isArray(data.collections)) {
+        console.error('数据格式错误: collections不是数组', data)
+        throw new Error('数据格式错误')
+      }
+      
+      // 转换数据格式以匹配现有UI
+      const cloudItems: CloudItem[] = data.collections.map((collection: any, index: number) => {
+        console.log(`处理第${index + 1}个收藏项:`, {
+          id: collection.id,
+          cloud_name: collection.cloud_name,
+          tool_id: collection.tool_id,
+          original_image_url: collection.original_image_url
+        })
+        
+        // 处理位置信息 - 修复版本
+        let locationText = '未知位置';
+        
+        // 尝试从不同的数据结构中获取位置信息
+        if (collection.location) {
+          if (typeof collection.location === 'string') {
+            // 如果location是字符串
+            locationText = collection.location;
+          } else if (collection.location.address) {
+            // 如果location是对象且有address字段
+            locationText = collection.location.address;
+          } else if (Array.isArray(collection.location) && collection.location.length > 0) {
+            // 如果location是数组（关联查询结果）
+            locationText = collection.location[0]?.address || '未知位置';
+          }
+        }
+        
+        console.log(`收藏项 ${index + 1} 的位置信息:`, {
+          原始location: collection.location,
+          解析后的locationText: locationText,
+          工具ID: collection.tool_id
+        });
+        
+        // 如果位置是默认值或空值，使用工具特定的个性化位置
+        if (locationText === '未知位置' || locationText === '位置未知' || !locationText || locationText.trim() === '') {
+          const toolSpecificLocations = {
+            'glassCover': '意念定位中…',
+            'hand': '摸鱼时区深处',
+            'catPaw': '躲猫猫冠军认证点🐾',
+            'broom': '所有可能性的交汇处',
+            // 添加可能的其他工具ID映射
+            'crystal-ball': '意念定位中…',
+            'cloud-hand': '摸鱼时区深处',
+            'cat-paw': '躲猫猫冠军认证点🐾',
+            'red-pen': '所有可能性的交汇处'
+          };
+          
+          const toolId = collection.tool_id;
+          locationText = toolSpecificLocations[toolId as keyof typeof toolSpecificLocations] || '神秘维度';
+          
+          console.log(`使用工具特定位置: 工具ID=${toolId}, 位置=${locationText}`);
+        }
+        
+        const cloudItem = {
+          id: collection.id,
+          image: collection.original_image_url,
+          name: collection.cloud_name,
+          description: collection.cloud_description || '',
+          tool: collection.tool_name,
+          toolIcon: collection.tool_emoji,
+          capturedAt: collection.capture_time,
+          location: locationText
+        }
+        
+        console.log(`转换后的云朵项:`, cloudItem)
+        return cloudItem
+      })
+
+      console.log('=== 最终转换结果 ===')
+      console.log('转换后的云朵数据数量:', cloudItems.length)
+      console.log('转换后的云朵数据:', JSON.stringify(cloudItems, null, 2))
+      console.log('即将设置到state的数据:', cloudItems)
+      
+      // 添加位置信息的详细调试
+      cloudItems.forEach((item, index) => {
+        console.log(`云朵 ${index + 1} 的位置信息:`, {
+          id: item.id,
+          name: item.name,
+          location: item.location,
+          tool: item.tool,
+          toolIcon: item.toolIcon
+        });
+      });
+      
+      setClouds(cloudItems)
+      console.log('setClouds 调用完成')
+
+    } catch (error) {
+      console.error('加载数据失败:', error)
+      setError(error instanceof Error ? error.message : '加载失败')
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
+    loadUserCollections()
+  }, [user, authLoading, router])
+
+  // 手动刷新
+  const handleRefresh = () => {
+    loadUserCollections(true)
+  }
+
+  const deleteCloud = async (id: string) => {
+    try {
+      const response = await authenticatedFetch(`/api/v2/cloud-collections/${id}`, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) {
+        throw new Error('删除失败')
+      }
+
+      // 从本地状态中移除
+      const updatedClouds = clouds.filter((cloud) => cloud.id !== id)
+      setClouds(updatedClouds)
+      setSelectedCloud(null)
+      
+    } catch (error) {
+      console.error('删除云朵失败:', error)
+      alert(`删除失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
   }
 
   const formatDate = (dateString: string) => {
@@ -49,6 +220,46 @@ export default function CollectionPage() {
       hour: "2-digit",
       minute: "2-digit",
     })
+  }
+
+  // 认证加载状态
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-200 via-sky-100 to-white">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-sky-600 mx-auto" />
+          <p className="text-sky-600">正在验证身份...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 数据加载状态
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-200 via-sky-100 to-white">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-sky-600 mx-auto" />
+          <p className="text-sky-600">正在加载你的天空...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 错误状态
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-200 via-sky-100 to-white">
+        <div className="text-center space-y-4">
+          <div className="text-6xl text-red-400 mb-4">😢</div>
+          <h2 className="text-xl font-semibold text-red-600">加载失败</h2>
+          <p className="text-red-500">{error}</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            重新加载
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -104,31 +315,73 @@ export default function CollectionPage() {
 
       <div className="relative z-30 container mx-auto px-4 py-8">
         {/* 头部 */}
-        <div className="flex items-center gap-4 mb-8">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => router.back()} 
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => router.back()} 
+              className="text-white hover:bg-white/20 backdrop-blur-sm"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="flex items-center gap-3">
+              <Cloud className="w-6 h-6 text-white drop-shadow-md" />
+              <h1 className="text-2xl font-bold text-white drop-shadow-md">我的天空</h1>
+            </div>
+          </div>
+          
+          {/* 刷新按钮 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
             className="text-white hover:bg-white/20 backdrop-blur-sm"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
-          <div className="flex items-center gap-3">
-            <Cloud className="w-6 h-6 text-white drop-shadow-md" />
-            <h1 className="text-2xl font-bold text-white drop-shadow-md">我的天空</h1>
-          </div>
+          
+          {/* 临时调试按钮 */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              console.log('=== API调试测试 ===')
+              console.log('当前用户:', user)
+              console.log('认证状态:', { user: !!user, loading: authLoading })
+              
+              try {
+                // 测试简单的API调用
+                const testResponse = await fetch('http://localhost:8000/api/capture-tools')
+                console.log('测试API响应状态:', testResponse.status)
+                const testData = await testResponse.json()
+                console.log('测试API数据:', testData)
+                
+                // 测试认证API调用
+                const authResponse = await authenticatedFetch('/api/v2/my-collections?page=1&page_size=5')
+                console.log('认证API响应状态:', authResponse.status)
+                const authData = await authResponse.json()
+                console.log('认证API数据:', authData)
+              } catch (error) {
+                console.error('API测试失败:', error)
+              }
+            }}
+            className="text-white hover:bg-white/20 backdrop-blur-sm text-xs"
+          >
+            调试API
+          </Button>
         </div>
 
         {clouds.length === 0 ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16">
             <div className="text-8xl text-white/70 mb-6 drop-shadow-lg">☁️</div>
             <h2 className="text-xl font-semibold text-white mb-4 drop-shadow-sm">天空还很空旷</h2>
-            <p className="text-white/90 mb-8 drop-shadow-sm">快去捕捉你的第一朵云吧！</p>
             <Button
               onClick={() => router.push("/")}
               className="bg-white/30 backdrop-blur-sm hover:bg-white/40 text-white border border-white/30"
             >
-              开始捕云
+              回到首页捕云
             </Button>
           </motion.div>
         ) : (

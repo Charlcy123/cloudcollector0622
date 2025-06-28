@@ -27,30 +27,30 @@ def init_capture_tools():
     capture_tools_data = [
         {
             "id": "broom",
-            "name": "扫帚",
-            "emoji": "🧹",
-            "description": "魔法世界的经典工具，能够捕获最具幻想色彩的云朵，让每朵云都带有童话般的魔力",
+            "name": "水晶球",
+            "emoji": "🔮",
+            "description": "摇到它头晕——蹦出的预言全醉啦！魔法世界的神秘工具，能够捕获最具幻想色彩的云朵",
             "sort_order": 1
         },
         {
-            "id": "hand", 
-            "name": "手",
-            "emoji": "🤚",
-            "description": "最直接的捕云方式，用心去感受云朵的温度，捕获最贴近生活的云朵名称",
+            "id": "hand",
+            "name": "云朵之手",
+            "emoji": "✋",
+            "description": "生活实诚风格，直接用手感受云朵的真实触感",
             "sort_order": 2
         },
         {
             "id": "catPaw",
-            "name": "猫爪",
-            "emoji": "🐾", 
-            "description": "轻柔而可爱的捕云方式，专门用来捕获那些毛茸茸、让人想要撸一把的云朵",
+            "name": "猫咪爪爪",
+            "emoji": "🐾",
+            "description": "猫主子视角，情绪化地捕获天空中的移动物体",
             "sort_order": 3
         },
         {
             "id": "glassCover",
-            "name": "玻璃罩",
-            "emoji": "🫙",
-            "description": "优雅而神秘的捕云工具，能够捕获最具艺术气息和诗意的云朵名称",
+            "name": "红笔",
+            "emoji": "✍️",
+            "description": "点一下，向天空催更。文学策展人的专业工具，将云朵转化为艺术作品",
             "sort_order": 4
         }
     ]

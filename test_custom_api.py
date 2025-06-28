@@ -32,7 +32,7 @@ async def test_cloud_name_from_image():
             response = await client.post(
                 f"{LOCAL_API_BASE}/api/cloud/name-from-image",
                 json=payload,
-                timeout=30.0
+                timeout=300.0
             )
             
             if response.status_code == 200:
@@ -96,7 +96,7 @@ async def test_cloud_description_from_image():
                 response = await client.post(
                     f"{LOCAL_API_BASE}/api/cloud/description-from-image",
                     json=test_case["payload"],
-                    timeout=30.0
+                    timeout=300.0
                 )
                 
                 if response.status_code == 200:
@@ -279,7 +279,7 @@ async def test_cloud_name_without_weather():
             response = await client.post(
                 f"{LOCAL_API_BASE}/api/cloud/name-from-image",
                 json=payload,
-                timeout=30.0
+                timeout=300.0
             )
             
             if response.status_code == 200:
@@ -321,7 +321,7 @@ async def test_cloud_description_without_weather():
             response = await client.post(
                 f"{LOCAL_API_BASE}/api/cloud/description-from-image",
                 json=payload,
-                timeout=30.0
+                timeout=300.0
             )
             
             if response.status_code == 200:

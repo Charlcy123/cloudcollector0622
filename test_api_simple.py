@@ -26,7 +26,7 @@ async def test_basic_api():
     
     try:
         # 增加超时时间
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             print("开始API调用...")
             response = await client.post('https://api.tu-zi.com/v1/chat/completions', headers=headers, json=payload)
             print(f'状态码: {response.status_code}')
@@ -93,7 +93,7 @@ async def test_cloud_naming_api():
     }
     
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             print("开始云朵命名API调用...")
             response = await client.post('https://api.tu-zi.com/v1/chat/completions', headers=headers, json=payload)
             print(f'状态码: {response.status_code}')

@@ -46,7 +46,7 @@ async def test_supabase_with_httpx():
         
         async with httpx.AsyncClient(
             verify=False,  # 跳过SSL验证
-            timeout=30.0
+            timeout=300.0
         ) as client:
             # 测试查询capture_tools表
             print("测试查询capture_tools表...")

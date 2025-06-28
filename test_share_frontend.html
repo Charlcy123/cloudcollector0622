@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>云彩收集手册 - 分享图片测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            box-sizing: border-box;
+        }
+        
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        
+        .loading {
+            text-align: center;
+            font-size: 18px;
+            margin: 20px 0;
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff6b6b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        
+        .success {
+            background: rgba(0, 255, 0, 0.2);
+            color: #4ECDC4;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌤️ 云彩收集手册 - 分享图片测试</h1>
+        
+        <form id="shareForm">
+            <div class="form-group">
+                <label for="cloudName">云朵名称：</label>
+                <input type="text" id="cloudName" value="飞天葱花云" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">云朵描述：</label>
+                <textarea id="description" required>它正准备飞进月亮里搅拌奶油！预言：今晚你会和星星交换秘密，顺便弄丢了一个苹果核！</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="toolIcon">捕云工具：</label>
+                <select id="toolIcon">
+                    <option value="🔮">🔮 水晶球</option>
+                    <option value="✋">✋ 云朵之手</option>
+                    <option value="🐾">🐾 猫咪爪爪</option>
+                    <option value="✍️">✍️ 红笔</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="location">拍摄地点：</label>
+                <input type="text" id="location" value="北京市朝阳区">
+            </div>
+            
+            <button type="submit" id="generateBtn">
+                🎨 生成分享图片
+            </button>
+        </form>
+        
+        <div id="result" class="result">
+            <h3>生成结果：</h3>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('shareForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const generateBtn = document.getElementById('generateBtn');
+            const result = document.getElementById('result');
+            const resultContent = document.getElementById('resultContent');
+            
+            // 获取表单数据
+            const formData = {
+                cloud_name: document.getElementById('cloudName').value,
+                description: document.getElementById('description').value,
+                tool_icon: document.getElementById('toolIcon').value,
+                captured_at: new Date().toLocaleString('zh-CN'),
+                location: document.getElementById('location').value,
+                image_url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9hFRXwgAAAABJRU5ErkJggg==' // 简单的1x1透明图片
+            };
+            
+            // 显示加载状态
+            generateBtn.disabled = true;
+            generateBtn.textContent = '🔄 正在生成...';
+            result.classList.remove('show');
+            
+            try {
+                // 调用后端API（如果可用）或者使用本地Python脚本
+                let shareImageUrl;
+                
+                try {
+                    // 尝试调用后端API
+                    const response = await fetch('http://localhost:8000/api/share/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        shareImageUrl = result.share_image_url;
+                    } else {
+                        throw new Error('后端API不可用');
+                    }
+                } catch (apiError) {
+                    // 如果后端API不可用，显示Python脚本生成的结果
+                    console.log('后端API不可用，使用本地生成的图片');
+                    shareImageUrl = 'static/shares/share_20250626_200330.jpg';
+                }
+                
+                // 显示结果
+                resultContent.innerHTML = `
+                    <div class="success">
+                        ✅ 分享图片生成成功！
+                    </div>
+                    <p><strong>图片URL：</strong> <a href="${shareImageUrl}" target="_blank" style="color: #4ECDC4;">${shareImageUrl}</a></p>
+                    <img src="${shareImageUrl}" alt="分享图片" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <div style="display:none; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 8px; text-align: center;">
+                        <p>📷 图片预览不可用</p>
+                        <p>请点击上方链接查看生成的图片</p>
+                    </div>
+                `;
+                
+                result.classList.add('show');
+                
+            } catch (error) {
+                console.error('生成分享图片失败:', error);
+                resultContent.innerHTML = `
+                    <div class="error">
+                        ❌ 生成分享图片失败：${error.message}
+                    </div>
+                    <p>请确保后端服务正在运行，或者直接运行 Python 脚本：</p>
+                    <code style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; display: block; margin: 10px 0;">
+                        python test_share_simple.py
+                    </code>
+                `;
+                result.classList.add('show');
+            } finally {
+                // 恢复按钮状态
+                generateBtn.disabled = false;
+                generateBtn.textContent = '🎨 生成分享图片';
+            }
+        });
+    </script>
+</body>
+</html> 
